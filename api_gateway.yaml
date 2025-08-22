@@ -22,6 +22,11 @@ Resources:
       Code: ./unit_test_builder.py
       Runtime: python3.13
       Timeout: 60
+      Environment:
+        Variables:
+          REGION: !ImportValue unit-test-builder-bedrock-agent-region
+          AGENT_ID: !ImportValue unit-test-builder-bedrock-agent-id
+          ALIAS_ID: !ImportValue unit-test-builder-bedrock-agent-alias-id
 
   APIGateway:
     Type: AWS::ApiGatewayV2::Api

@@ -163,9 +163,16 @@ Resources:
 
 Outputs:
   BedrockAgentId:
-    Description: Bedrock Agent ID
     Value: !Ref Agent
+    Export:
+      Name: !Sub ${PrefixName}-bedrock-agent-id
 
   BedrockAgentAliasId:
-    Description: Bedrock Agent Alias ID
     Value: !GetAtt Alias.AgentAliasId
+    Export:
+      Name: !Sub ${PrefixName}-bedrock-agent-alias-id
+
+  BedrockAgentRegion:
+    Value: !Sub  ${AWS::Region}
+    Export:
+      Name: !Sub ${PrefixName}-bedrock-agent-region

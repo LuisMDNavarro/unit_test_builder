@@ -1,12 +1,9 @@
 version: 0.2
 phases:
-  install:
-    runtime-versions:
-      python: 3.13
   build:
     commands:
       - aws cloudformation package --template-file api_gateway.yaml --s3-bucket $ARTIFACTS_BUCKET --output-template-file api_gateway_packaged.yaml
 artifacts:
   files:
     - api_gateway_packaged.yaml
-  name: BuildOutput
+    - bedrock.yaml
