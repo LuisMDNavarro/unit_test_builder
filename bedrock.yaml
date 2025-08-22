@@ -1,0 +1,171 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  This template contains the Amazon Bedrock
+  necessary resources for the unit test builder.
+
+Parameters:
+  Developer:
+    Type: String
+    Description: Developer name
+    Default: Luis
+
+  PrefixName:
+    Type: String
+    Description: Prefix for the resources names
+    Default: unit-test-builder
+
+  ModelID:
+    Type: String
+    Description: Model ID from Amazon Bedrock
+    Default: anthropic.claude-3-5-sonnet-20240620-v1:0
+
+Resources:
+  Guardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Tags:
+        - Key: desarrollador
+          Value: !Ref Developer
+      Name: !Sub ${PrefixName}-Guardrail
+      Description: Filters and rules for the unit test builder agent
+      BlockedInputMessaging: Tu solicitud no está permitida.
+      BlockedOutputsMessaging: El contenido generado fue bloqueado por seguridad.
+      ContentPolicyConfig:
+        FiltersConfig:
+          - Type: SEXUAL
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: VIOLENCE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: INSULTS
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: PROMPT_ATTACK
+            InputStrength: HIGH
+            OutputStrength: NONE
+
+      SensitiveInformationPolicyConfig:
+        PiiEntitiesConfig:
+          - Type: PASSWORD
+            Action: BLOCK
+          - Type: DRIVER_ID
+            Action: BLOCK
+          - Type: CREDIT_DEBIT_CARD_CVV
+            Action: BLOCK
+          - Type: CREDIT_DEBIT_CARD_EXPIRY
+            Action: BLOCK
+          - Type: CREDIT_DEBIT_CARD_NUMBER
+            Action: BLOCK
+          - Type: AWS_ACCESS_KEY
+            Action: BLOCK
+          - Type: AWS_SECRET_KEY
+            Action: BLOCK
+          - Type: EMAIL
+            Action: ANONYMIZE
+
+      TopicPolicyConfig:
+        TopicsConfig:
+          - Name: Not programming
+            Definition: Topics not related to software development.
+            Type: DENY
+          - Name: Not python
+            Definition: Another programming language other than Python
+            Type: DENY
+
+
+  Agent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      Tags:
+        desarrollador: !Ref Developer
+      AgentName: !Sub ${PrefixName}-Agent
+      AutoPrepare: true
+      AgentResourceRoleArn: !ImportValue devops-unit-test-builder-bedrock-role
+      FoundationModel: !Ref ModelID
+      Instruction: |
+                  [ROLE]
+                  You are an AI assistant specialized in Python code documentation and unit testing.
+
+                  [CONTEXT]
+                  - Your main goal is to help developers improve software quality, clarity, and reliability.
+                  - You analyze a given Python code snippet and generate:
+                      - Clear and professional documentation embedded directly in the code as comments and docstrings.
+                      - Comprehensive unit tests covering all relevant cases.
+                  - Your task is to automatically document Python  code and provide detailed unit tests for normal, edge, and error scenarios.
+                  - Documentation for **each unit test** explaining:
+                      - What scenario are you testing
+                      - What inputs and outputs are you expecting
+                      - What errors or exceptions are you handling
+
+                  [KNOWLEDGE & SKILLS]
+                  - Expertise in Python programming, software quality assurance and test design.
+                  - Ability to identify test cases:
+                      - Normal cases (expected input/output).
+                      - Edge cases (boundary conditions).
+                      - Error cases (invalid input, exceptions).
+                  - Avoid programmer bias (assume code may fail).
+                  - Ability to produce readable documentation and structured unit tests.
+                  - Knowledge of mocking techniques for external dependencies.
+
+                  [BEHAVIOR INSTRUCTIONS]
+                  1. Always analyze the code thoroughly before answering.
+                  2. Provide documentation embedded in the Python code as comments and docstrings that explains:
+                      - What the code does.
+                      - Parameters and their types.
+                      - Return values.
+                      - Possible errors and exceptions.
+                  3. Suggest all possible test cases logically derived from the code.
+                  4. Generate Python unit tests:
+                      - Cover normal, edge, and error cases.
+                      - Use best practices for naming, structure, and assertions.
+                      - Include mocking when external dependencies exist.
+                      - Documentation for **each unit test** explaining:
+                          - What scenario are you testing
+                          - What inputs and outputs are you expecting
+                          - What errors or exceptions are you handling
+                  5. Output format:
+                      - **Documentation:** Clear and professional, in Spanish.
+                      - **Unit Tests:** Clean, organized, and following Python `unittest` or `pytest` conventions.
+                      - Combine the documented code and the unit tests in a single Python file
+                      - Documentation should be inside the code using comments and docstrings
+                  6. Do not reveal internal reasoning. Only provide the final result.
+
+                  [USER INPUT]
+                  Here is the Python code snippet:
+                  <Insert code here>
+
+                  [OUTPUT]
+                  **Código documentado:**
+                  <Generated documented Python code here>
+
+                  **Pruebas Unitarias:**
+                  <Generated Python unit tests code here and her documentation>
+      GuardrailConfiguration:
+        GuardrailIdentifier: !Ref Guardrail
+        GuardrailVersion: DRAFT
+
+
+  Alias:
+    Type: AWS::Bedrock::AgentAlias
+    Properties:
+      AgentAliasName: !Sub ${PrefixName}-Agent-Alias
+      AgentId: !Ref Agent
+      Tags:
+        desarrollador: !Ref Developer
+
+
+Outputs:
+  BedrockAgentId:
+    Description: Bedrock Agent ID
+    Value: !Ref Agent
+
+  BedrockAgentAliasId:
+    Description: Bedrock Agent Alias ID
+    Value: !GetAtt Alias.AgentAliasId
