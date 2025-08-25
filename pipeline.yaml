@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  This template contains the necessary resources to make
+  the automated deployment of the Unit Test Builder API,
+  using the necessary resources related to codepipeline.
+
+Parameters:
+  Developer:
+    Type: String
+    Description: Developer name
+    Default: Luis
+
+  PrefixName:
+    Type: String
+    Description: Prefix for the resources names
+    Default: unit-test-builder
+
+  GitHubConnection:
+    Type: String
+    Description: ARN of CodePipeline Connection with Github
+
+  GitHubBranch:
+    Type: String
+    Description: Branch of work in the Github repository
+    Default: main
+
+  GitHubRepositoryName:
+    Type: String
+    Description: Name of the Github repository
+    Default: LuisMDNavarro/unit_test_builder
+
+Resources:
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Tags:
+        - Key: desarrollador
+          Value: !Ref Developer
+      Name: !Sub ${PrefixName}-build-project
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yaml
+      ServiceRole: !ImportValue devops-unit-test-builder-codebuild-role
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0-22.06.30
+        ComputeType: BUILD_GENERAL1_SMALL
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Value: !ImportValue devops-unit-test-builder-pipeline-artifacts-bucket
+            Name: ARTIFACTS_BUCKET
+            Type: PLAINTEXT
+
+      Cache:
+        Type: LOCAL
+        Modes:
+          - LOCAL_SOURCE_CACHE
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Tags:
+        - Key: desarrollador
+          Value: !Ref Developer
+      Name: !Sub ${PrefixName}-pipeline
+      ArtifactStore:
+        Type: S3
+        Location: !ImportValue devops-unit-test-builder-pipeline-artifacts-bucket
+      RoleArn: !ImportValue devops-unit-test-builder-pipeline-role
+      Stages:
+        - Name: Source
+          Actions:
+            - ActionTypeId:
+                Owner: AWS
+                Category: Source
+                Version: '1'
+                Provider: CodeStarSourceConnection
+              Name: SourceAction
+              Namespace: SourceVariables
+              Configuration:
+                ConnectionArn: !Sub ${GitHubConnection}
+                FullRepositoryId: !Sub ${GitHubRepositoryName}
+                BranchName: !Sub ${GitHubBranch}
+              OutputArtifacts:
+                - Name: SourceArtifact
+              Region: !Sub ${AWS::Region}
+              RunOrder: 1
+
+        - Name: Build
+          Actions:
+            - ActionTypeId:
+                Owner: AWS
+                Category: Build
+                Version: '1'
+                Provider: CodeBuild
+              Name: BuildAction
+              Namespace: BuildVariables
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
+              RunOrder: 1
+
+        - Name: Deploy
+          Actions:
+            - Name: DeployInfrastructureBedrock
+              RoleArn: !ImportValue devops-unit-test-builder-pipeline-role
+              ActionTypeId:
+                Owner: AWS
+                Category: Deploy
+                Version: '1'
+                Provider: CloudFormation
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                RoleArn: !ImportValue devops-unit-test-builder-cloudformation-role
+                StackName: unit-test-builder-bedrock
+                TemplatePath: BuildArtifact::bedrock.yaml
+              InputArtifacts:
+                - Name: BuildArtifact
+              RunOrder: 1
+
+            - Name: DeployInfrastructureAPI
+              RoleArn: !ImportValue devops-unit-test-builder-pipeline-role
+              ActionTypeId:
+                Owner: AWS
+                Category: Deploy
+                Version: '1'
+                Provider: CloudFormation
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                RoleArn: !ImportValue devops-unit-test-builder-cloudformation-role
+                StackName: unit-test-builder-API
+                TemplatePath: BuildArtifact::api_gateway_packaged.yaml
+              InputArtifacts:
+                - Name: BuildArtifact
+              RunOrder: 2
