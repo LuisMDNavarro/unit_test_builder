@@ -10,22 +10,31 @@ ALIAS_ID = os.environ.get("ALIAS_ID")
 
 def lambda_handler(event, context):
     try:
+        client = boto3.client("bedrock-agent-runtime", region_name=REGION)
         body = json.loads(event["body"])
         code = body.get("code")
         session_id = body.get("session_id")
-        client = boto3.client("bedrock-agent-runtime", region_name=REGION)
-
-        if not code:
-            return {"statusCode": 400, "body": json.dumps({"error": "Missing 'code'"})}
 
         if not session_id:
             return {
                 "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
                 "body": json.dumps({"error": "Missing 'session_id'"}),
             }
 
+        if not code:
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Missing 'code'"}),
+            }
+
         if len(code) > 10000:
-            return {"statusCode": 400, "body": json.dumps({"error": "Code too large"})}
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Code too large"}),
+            }
 
         response = client.invoke_agent(
             agentId=AGENT_ID,
@@ -51,9 +60,17 @@ def lambda_handler(event, context):
             ),
         }
     except client.exceptions.ResourceNotFoundException:
-        return {"statusCode": 404, "body": json.dumps({"error": "Agent not found"})}
+        return {
+            "statusCode": 404,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Agent not found"}),
+        }
     except client.exceptions.ThrottlingException:
-        return {"statusCode": 429, "body": json.dumps({"error": "Too many requests"})}
+        return {
+            "statusCode": 429,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Too many requests"}),
+        }
     except Exception as e:
         return {
             "statusCode": 500,
