@@ -1,0 +1,321 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  This template contains the necessary resources
+  before deploying the Unit Test Builder pipeline.
+
+Parameters:
+  Developer:
+    Type: String
+    Description: Developer name
+    Default: Luis
+
+  PrefixName:
+    Type: String
+    Description: Prefix for the resources names
+    Default: unit-test-builder
+
+Resources:
+#Roles
+  #CodeBuild
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Tags:
+        - Key: desarrollador
+          Value: !Ref Developer
+      RoleName: !Sub ${PrefixName}-CodeBuild-Role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuild-CloudWatch-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+        - PolicyName: CodeBuild-S3-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: "*"
+  #CodePipeline
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Tags:
+        - Key: desarrollador
+          Value: !Ref Developer
+      RoleName: !Sub ${PrefixName}-CodePipeline-Role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodePipeline-IAM-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: "*"
+        - PolicyName: CodePipeline-S3-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: "*"
+        - PolicyName: CodePipeline-CodeBuild-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: "*"
+        - PolicyName: CodePipeline-CodeStar-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codestar-connections:UseConnection
+                Resource: "*"
+        - PolicyName: CodePipeline-CloudFormation-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DescribeStackEvents
+                Resource: "*"
+
+  #CloudFormation
+  CloudFormationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Tags:
+        - Key: desarrollador
+          Value: !Ref Developer
+      RoleName: !Sub ${PrefixName}-CloudFormation-Role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudFormation-IAM-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: "*"
+        - PolicyName: CloudFormation-CloudWatch-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+        - PolicyName: CloudFormation-Bedrock-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:CreateGuardrailVersion
+                  - bedrock:CreateGuardrail
+                  - bedrock:UpdateGuardrail
+                  - bedrock:GetGuardrail
+                  - bedrock:DeleteGuardrail
+                  - bedrock:CreateAgent
+                  - bedrock:UpdateAgent
+                  - bedrock:GetAgent
+                  - bedrock:DeleteAgent
+                  - bedrock:PrepareAgent
+                  - bedrock:CreateAgentAlias
+                  - bedrock:UpdateAgentAlias
+                  - bedrock:GetAgentAlias
+                  - bedrock:DeleteAgentAlias
+                  - bedrock:TagResource
+                  - bedrock:ListTagsForResource
+                  - bedrock:ListAgentKnowledgeBases
+                  - bedrock:ListAgentActionGroups
+                Resource: "*"
+        - PolicyName: CloudFormation-APIGateway-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - apigateway:POST
+                  - apigateway:GET
+                  - apigateway:DELETE
+                  - apigateway:TagResource
+                Resource: "*"
+        - PolicyName: CloudFormation-Lambda-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:TagResource
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:UpdateFunctionCode
+                Resource: "*"
+        - PolicyName: CloudFormation-S3-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: "*"
+
+  #Lambda
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Tags:
+        - Key: desarrollador
+          Value: !Ref Developer
+      RoleName: !Sub ${PrefixName}-LambdaExecution-Role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Lambda-S3-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: "*"
+        - PolicyName: Lambda-CloudWatch-Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+        - PolicyName: Lambda-Bedrock-Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeAgent
+                  - bedrock:InvokeModel
+                Resource: "*"
+
+  #Bedrock
+  BedrockRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Tags:
+        - Key: desarrollador
+          Value: !Ref Developer
+      RoleName: !Sub ${PrefixName}-Bedrock-Role
+      Description: Unit Test Builder Agent
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Bedrock-Bedrock-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeAgent
+                  - bedrock:InvokeModel
+                  - bedrock:ApplyGuardrail
+                Resource: "*"
+
+#Buckets
+  PipelineArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: desarrollador
+          Value: !Ref Developer
+      BucketName: !Sub ${PrefixName}-pipeline-artifacts-bucket
+
+Outputs:
+  CodeBuildRole:
+    Value: !GetAtt CodeBuildRole.Arn
+    Export:
+      Name: !Sub devops-${PrefixName}-codebuild-role
+
+  CodePipelineRole:
+    Value: !GetAtt CodePipelineRole.Arn
+    Export:
+      Name: !Sub devops-${PrefixName}-pipeline-role
+
+  CloudFormationRole:
+    Value: !GetAtt CloudFormationRole.Arn
+    Export:
+      Name: !Sub devops-${PrefixName}-cloudformation-role
+
+  LambdaExecutionRole:
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub devops-${PrefixName}-lambda-role
+
+  BedrockRole:
+    Value: !GetAtt BedrockRole.Arn
+    Export:
+      Name: !Sub devops-${PrefixName}-bedrock-role
+
+  PipelineArtifactsBucket:
+    Value: !Ref PipelineArtifactsBucket
+    Export:
+      Name: !Sub devops-${PrefixName}-pipeline-artifacts-bucket
