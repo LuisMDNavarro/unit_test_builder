@@ -10,20 +10,23 @@ if "session_id" not in st.session_state:
 
 st.title("Unit Test Builder")
 
-code = st.text_area("Escribe tu funcion:")
+user_request = st.text_area("Escribe tu funcion:")
 send_code = st.button("Enviar")
 
 if send_code:
-    if code.strip():
-        payload = {"session_id": st.session_state.session_id, "code": code}
+    if user_request.strip():
+        payload = {
+            "session_id": st.session_state.session_id,
+            "user_request": user_request,
+        }
         response = requests.post(api_url, json=payload)
 
         if response.status_code == 200:
             data = response.json()
-            code = data.get("code")
+            api_response = data.get("api_response")
             st.success("Pruebas generadas")
             st.write("Código generado:")
-            st.write(code)
+            st.write(api_response)
         elif response.status_code in [400, 404, 429, 500]:
             data = response.json()
             error = data.get("error")

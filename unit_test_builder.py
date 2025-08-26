@@ -2,6 +2,7 @@ import json
 import os
 
 import boto3
+import botocore
 
 REGION = os.environ.get("REGION")
 AGENT_ID = os.environ.get("AGENT_ID")
@@ -12,7 +13,7 @@ def lambda_handler(event, context):
     try:
         client = boto3.client("bedrock-agent-runtime", region_name=REGION)
         body = json.loads(event["body"])
-        code = body.get("code")
+        user_request = body.get("user_request")
         session_id = body.get("session_id")
 
         if not session_id:
@@ -22,25 +23,25 @@ def lambda_handler(event, context):
                 "body": json.dumps({"error": "Missing 'session_id'"}),
             }
 
-        if not code:
+        if not user_request:
             return {
                 "statusCode": 400,
                 "headers": {"Content-Type": "application/json"},
-                "body": json.dumps({"error": "Missing 'code'"}),
+                "body": json.dumps({"error": "Missing 'user_request'"}),
             }
 
-        if len(code) > 10000:
+        if len(user_request) > 10000:
             return {
                 "statusCode": 400,
                 "headers": {"Content-Type": "application/json"},
-                "body": json.dumps({"error": "Code too large"}),
+                "body": json.dumps({"error": "Request too large"}),
             }
 
         response = client.invoke_agent(
             agentId=AGENT_ID,
             agentAliasId=ALIAS_ID,
             sessionId=session_id,
-            inputText=code,
+            inputText=user_request,
         )
 
         response_text = ""
@@ -55,7 +56,7 @@ def lambda_handler(event, context):
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps(
                 {
-                    "code": response_text,
+                    "api_response": response_text,
                 }
             ),
         }
@@ -65,7 +66,10 @@ def lambda_handler(event, context):
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": "Agent not found"}),
         }
-    except client.exceptions.ThrottlingException:
+    except (
+        client.exceptions.ThrottlingException,
+        botocore.eventstream.EventStreamError,
+    ):
         return {
             "statusCode": 429,
             "headers": {"Content-Type": "application/json"},

@@ -71,4 +71,8 @@ Resources:
 Outputs:
   ApiEndpoint:
     Description: HTTP API Gateway URL
-    Value: !Sub https://${APIGateway}.execute-api.${AWS::Region}.amazonaws.com
+    Value: !GetAtt APIGateway.ApiEndpoint
+
+  ApiRoute:
+    Description: Route to generate unit tests
+    Value: /generate-test
