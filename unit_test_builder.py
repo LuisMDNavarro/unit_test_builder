@@ -42,6 +42,12 @@ def lambda_handler(event, context):
             agentAliasId=ALIAS_ID,
             sessionId=session_id,
             inputText=user_request,
+            sessionState={
+                "promptSessionAttributes": {
+                    "language": body.get("language", "English"),
+                    "framework": body.get("framework", "pytest"),
+                }
+            },
         )
 
         response_text = ""
