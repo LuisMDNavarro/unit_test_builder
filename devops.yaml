@@ -197,6 +197,7 @@ Resources:
                   - lambda:AddPermission
                   - lambda:RemovePermission
                   - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
                 Resource: "*"
         - PolicyName: CloudFormation-S3-Policy
           PolicyDocument:
