@@ -207,6 +207,11 @@ Resources:
 
 
 Outputs:
+  BedrockAgentArn:
+    Value: !GetAtt Agent.AgentArn
+    Export:
+      Name: !Sub ${PrefixName}-bedrock-agent-arn
+
   BedrockAgentId:
     Value: !Ref Agent
     Export:

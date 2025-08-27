@@ -5,6 +5,7 @@ import boto3
 import botocore
 
 REGION = os.environ.get("REGION")
+AGENT_ARN = os.environ.get("AGENT_ARN")
 AGENT_ID = os.environ.get("AGENT_ID")
 ALIAS_ID = os.environ.get("ALIAS_ID")
 
@@ -37,35 +38,34 @@ def lambda_handler(event, context):
                 "body": json.dumps({"error": "Request too large"}),
             }
 
-        response = client.invoke_agent(
-            agentId=AGENT_ID,
-            agentAliasId=ALIAS_ID,
-            sessionId=session_id,
-            inputText=user_request,
-            sessionState={
-                "promptSessionAttributes": {
-                    "language": body.get("language", "English"),
-                    "framework": body.get("framework", "pytest"),
-                }
-            },
+        payload_bytes = json.dumps(
+            {
+                "inputText": user_request,
+                "language": body.get("language", "English"),
+                "framework": body.get("framework", "pytest"),
+            }
+        ).encode("utf-8")
+
+        response = client.invoke_agent_runtime(
+            agentRuntimeArn=AGENT_ARN,
+            mcpSessionId=session_id,
+            payload=payload_bytes,
+            contentType="application/json",
+            accept="application/json",
         )
 
-        response_text = ""
+        gateway = boto3.client(
+            "apigatewaymanagementapi",
+            endpoint_url=f"https://{event['requestContext']['domainName']}"
+            f"/{event['requestContext']['stage']}",
+        )
 
-        for response_event in response["completion"]:
-            if "chunk" in response_event:
-                data = response_event["chunk"]["bytes"]
-                response_text += data.decode("utf8")
+        connection_id = event["requestContext"]["connectionId"]
 
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(
-                {
-                    "api_response": response_text,
-                }
-            ),
-        }
+        for event_chunk in response:
+            data_bytes = event_chunk["chunk"]["bytes"]
+            gateway.post_to_connection(ConnectionId=connection_id, Data=data_bytes)
+
     except client.exceptions.ResourceNotFoundException:
         return {
             "statusCode": 404,

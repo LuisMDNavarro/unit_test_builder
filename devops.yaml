@@ -250,6 +250,15 @@ Resources:
                 Action:
                   - bedrock:InvokeAgent
                   - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: "*"
+        - PolicyName: Lambda-ExecuteAPI-Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - execute-api:ManageConnections
                 Resource: "*"
 
   #Bedrock
@@ -278,6 +287,7 @@ Resources:
                   - bedrock:InvokeAgent
                   - bedrock:InvokeModel
                   - bedrock:ApplyGuardrail
+                  - bedrock:InvokeModelWithResponseStream
                 Resource: "*"
 
 #Buckets

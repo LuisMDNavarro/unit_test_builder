@@ -21,10 +21,11 @@ Resources:
       Role: !ImportValue devops-unit-test-builder-lambda-role
       Code: ./unit_test_builder.py
       Runtime: python3.13
-      Timeout: 60
+      Timeout: 90
       Environment:
         Variables:
           REGION: !ImportValue unit-test-builder-bedrock-agent-region
+          AGENT_ARN: !ImportValue unit-test-builder-bedrock-agent-arn
           AGENT_ID: !ImportValue unit-test-builder-bedrock-agent-id
           ALIAS_ID: !ImportValue unit-test-builder-bedrock-agent-alias-id
 
@@ -34,7 +35,8 @@ Resources:
       Tags:
         desarrollador: !Ref Developer
       Name: Unit Test Builder API
-      ProtocolType: HTTP
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: $request.body.action
 
   Integration:
     Type: AWS::ApiGatewayV2::Integration
@@ -48,7 +50,7 @@ Resources:
     Type: AWS::ApiGatewayV2::Route
     Properties:
       ApiId: !Ref APIGateway
-      RouteKey: POST /generate-test
+      RouteKey: generate-test
       Target: !Sub integrations/${Integration}
 
   Permission:
@@ -57,7 +59,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt LambdaFunction.Arn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/$default/POST/generate-test
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/*/*/*
 
   ApiDeployment:
     Type: AWS::ApiGatewayV2::Stage
