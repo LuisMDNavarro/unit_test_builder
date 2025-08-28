@@ -25,7 +25,6 @@ Resources:
       Environment:
         Variables:
           REGION: !ImportValue unit-test-builder-bedrock-agent-region
-          AGENT_ARN: !ImportValue unit-test-builder-bedrock-agent-arn
           AGENT_ID: !ImportValue unit-test-builder-bedrock-agent-id
           ALIAS_ID: !ImportValue unit-test-builder-bedrock-agent-alias-id
 
@@ -35,8 +34,7 @@ Resources:
       Tags:
         desarrollador: !Ref Developer
       Name: Unit Test Builder API
-      ProtocolType: WEBSOCKET
-      RouteSelectionExpression: $request.body.action
+      ProtocolType: HTTP
 
   Integration:
     Type: AWS::ApiGatewayV2::Integration
@@ -49,7 +47,7 @@ Resources:
     Type: AWS::ApiGatewayV2::Route
     Properties:
       ApiId: !Ref APIGateway
-      RouteKey: generate-test
+      RouteKey: POST /generate-test
       Target: !Sub integrations/${Integration}
 
   Permission:
@@ -58,7 +56,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !GetAtt LambdaFunction.Arn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/*/*/*
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/$default/POST/generate-test
 
   ApiDeployment:
     Type: AWS::ApiGatewayV2::Stage
@@ -76,4 +74,4 @@ Outputs:
 
   ApiRoute:
     Description: Route to generate unit tests
-    Value: generate-test
+    Value: /generate-test

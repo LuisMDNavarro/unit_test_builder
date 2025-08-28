@@ -5,81 +5,85 @@ import boto3
 import botocore
 
 REGION = os.environ.get("REGION")
-AGENT_ARN = os.environ.get("AGENT_ARN")
 AGENT_ID = os.environ.get("AGENT_ID")
 ALIAS_ID = os.environ.get("ALIAS_ID")
 
 
 def lambda_handler(event, context):
-    connection_id = event["requestContext"].get("connectionId")
-    domain_name = event["requestContext"].get("domainName")
-    stage = event["requestContext"].get("stage")
-
-    gateway = boto3.client(
-        "apigatewaymanagementapi",
-        endpoint_url=f"https://{domain_name}" f"/{stage}",
-    )
     try:
-        client = boto3.client("bedrock-agentcore", region_name=REGION)
+        client = boto3.client("bedrock-agent-runtime", region_name=REGION)
         body = json.loads(event["body"])
         user_request = body.get("user_request")
         session_id = body.get("session_id")
 
         if not session_id:
-            mensaje = "Missing 'session_id"
-            gateway.post_to_connection(
-                ConnectionId=connection_id, Data=mensaje.encode("utf-8")
-            )
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Missing 'session_id'"}),
+            }
 
         if not user_request:
-            mensaje = "Missing 'user_request"
-            gateway.post_to_connection(
-                ConnectionId=connection_id, Data=mensaje.encode("utf-8")
-            )
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Missing 'user_request'"}),
+            }
 
         if len(user_request) > 10000:
-            mensaje = "Request too large"
-            gateway.post_to_connection(
-                ConnectionId=connection_id, Data=mensaje.encode("utf-8")
-            )
-
-        payload_bytes = json.dumps(
-            {
-                "inputText": user_request,
-                "language": body.get("language", "English"),
-                "framework": body.get("framework", "pytest"),
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Request too large"}),
             }
-        ).encode("utf-8")
 
-        response = client.invoke_agent_runtime(
-            agentRuntimeArn=AGENT_ARN,
-            mcpSessionId=session_id,
-            payload=payload_bytes,
-            contentType="application/json",
-            accept="application/json",
+        response = client.invoke_agent(
+            agentId=AGENT_ID,
+            agentAliasId=ALIAS_ID,
+            sessionId=session_id,
+            inputText=user_request,
+            sessionState={
+                "promptSessionAttributes": {
+                    "language": body.get("language", "English"),
+                    "framework": body.get("framework", "pytest"),
+                }
+            },
         )
 
-        connection_id = event["requestContext"]["connectionId"]
+        response_text = ""
 
-        for event_chunk in response:
-            data_bytes = event_chunk["chunk"]["bytes"]
-            gateway.post_to_connection(ConnectionId=connection_id, Data=data_bytes)
+        for response_event in response["completion"]:
+            if "chunk" in response_event:
+                data = response_event["chunk"]["bytes"]
+                response_text += data.decode("utf8")
 
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(
+                {
+                    "api_response": response_text,
+                }
+            ),
+        }
     except client.exceptions.ResourceNotFoundException:
-        mensaje = "Agent not found"
-        gateway.post_to_connection(
-            ConnectionId=connection_id, Data=mensaje.encode("utf-8")
-        )
+        return {
+            "statusCode": 404,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Agent not found"}),
+        }
     except (
         client.exceptions.ThrottlingException,
         botocore.eventstream.EventStreamError,
     ):
-        mensaje = "Too many requests"
-        gateway.post_to_connection(
-            ConnectionId=connection_id, Data=mensaje.encode("utf-8")
-        )
+        return {
+            "statusCode": 429,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Too many requests"}),
+        }
     except Exception as e:
-        mensaje = str(e)
-        gateway.post_to_connection(
-            ConnectionId=connection_id, Data=mensaje.encode("utf-8")
-        )
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": str(e)}),
+        }
