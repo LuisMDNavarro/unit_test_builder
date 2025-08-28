@@ -164,36 +164,21 @@ Resources:
                       "anthropic_version": "bedrock-2023-05-31",
                       "system": "$instruction$",
                       "messages": [
-                        {
-                          "role": "user",
-                          "content": [
-                              {
-                                  "type": "text",
-                                  "text": "
-                                      [USER INPUT]
-                                      Here is the Python code snippet:
-                                      <Insert code here>
-                                  "
-                              }
-                          ]
-                      },
-                      {
-                          "role": "assistant",
-                          "content": [
-                              {
-                                  "type": "text",
-                                  "text": "
-                                      [OUTPUT]
-                                      **Documented code:**
-                                      <Generated documented Python code here>
-
-                                      **Unit Tests:**
-                                      <Generated Python unit tests code here and its documentation>
-                                  "
-                              }
-                          ]
-                      }
-                      ]
+                            {
+                                "role" : "user",
+                                "content": [{
+                                    "type": "text",
+                                    "text": "$question$"
+                                }]
+                            },
+                            {
+                                "role" : "assistant",
+                                "content" : [{
+                                    "type": "text",
+                                    "text": "$agent_scratchpad$"
+                                }]
+                            }
+                        ]
                     }
 
 
