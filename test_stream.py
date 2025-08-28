@@ -1,13 +1,11 @@
+# flake8: noqa
 import json
-import os
 
 import boto3
 import botocore
 
-REGION = os.environ.get("REGION")
-AGENT_ARN = os.environ.get("AGENT_ARN")
-AGENT_ID = os.environ.get("AGENT_ID")
-ALIAS_ID = os.environ.get("ALIAS_ID")
+REGION = "us-east-1"
+AGENT_ARN = "arn:aws:bedrock:us-east-1:355631997030:agent/CSSEIG51ET"
 
 
 def lambda_handler(event, context):
@@ -15,32 +13,36 @@ def lambda_handler(event, context):
     domain_name = event["requestContext"].get("domainName")
     stage = event["requestContext"].get("stage")
 
+    if not connection_id or not domain_name or not stage:
+        return {"statusCode": 400}
+
     gateway = boto3.client(
-        "apigatewaymanagementapi",
-        endpoint_url=f"https://{domain_name}" f"/{stage}",
+        "apigatewaymanagementapi", endpoint_url=f"https://{domain_name}/{stage}"
     )
+
+    message = {"message": "Hola desde Lambda!"}
+
     try:
         client = boto3.client("bedrock-agentcore", region_name=REGION)
         body = json.loads(event["body"])
         user_request = body.get("user_request")
         session_id = body.get("session_id")
-
         if not session_id:
-            mensaje = "Missing 'session_id"
+            message = {"message": "Missing 'session_id"}
             gateway.post_to_connection(
-                ConnectionId=connection_id, Data=mensaje.encode("utf-8")
+                ConnectionId=connection_id, Data=json.dumps(message).encode("utf-8")
             )
 
         if not user_request:
-            mensaje = "Missing 'user_request"
+            message = {"message": "Missing 'user_request"}
             gateway.post_to_connection(
-                ConnectionId=connection_id, Data=mensaje.encode("utf-8")
+                ConnectionId=connection_id, Data=json.dumps(message).encode("utf-8")
             )
 
         if len(user_request) > 10000:
-            mensaje = "Request too large"
+            message = {"message": "Request too large"}
             gateway.post_to_connection(
-                ConnectionId=connection_id, Data=mensaje.encode("utf-8")
+                ConnectionId=connection_id, Data=json.dumps(message).encode("utf-8")
             )
 
         payload_bytes = json.dumps(
@@ -59,27 +61,31 @@ def lambda_handler(event, context):
             accept="application/json",
         )
 
-        connection_id = event["requestContext"]["connectionId"]
-
-        for event_chunk in response:
-            data_bytes = event_chunk["chunk"]["bytes"]
-            gateway.post_to_connection(ConnectionId=connection_id, Data=data_bytes)
-
-    except client.exceptions.ResourceNotFoundException:
-        mensaje = "Agent not found"
         gateway.post_to_connection(
-            ConnectionId=connection_id, Data=mensaje.encode("utf-8")
+            ConnectionId=connection_id, Data=json.dumps(message).encode("utf-8")
+        )
+    except gateway.exceptions.GoneException:
+        message = {"error": f"Connection {connection_id} is gone"}
+        gateway.post_to_connection(
+            ConnectionId=connection_id, Data=json.dumps(message).encode("utf-8")
+        )
+    except client.exceptions.ResourceNotFoundException:
+        message = {"error": "Agent not found"}
+        gateway.post_to_connection(
+            ConnectionId=connection_id, Data=json.dumps(message).encode("utf-8")
         )
     except (
         client.exceptions.ThrottlingException,
         botocore.eventstream.EventStreamError,
     ):
-        mensaje = "Too many requests"
+        message = {"error": "Too many requests"}
         gateway.post_to_connection(
-            ConnectionId=connection_id, Data=mensaje.encode("utf-8")
+            ConnectionId=connection_id, Data=json.dumps(message).encode("utf-8")
         )
     except Exception as e:
-        mensaje = str(e)
+        message = {"error": str(e)}
         gateway.post_to_connection(
-            ConnectionId=connection_id, Data=mensaje.encode("utf-8")
+            ConnectionId=connection_id, Data=json.dumps(message).encode("utf-8")
         )
+    finally:
+        return {"statusCode": 200}

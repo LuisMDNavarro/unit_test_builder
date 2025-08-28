@@ -76,4 +76,4 @@ Outputs:
 
   ApiRoute:
     Description: Route to generate unit tests
-    Value: /generate-test
+    Value: generate-test

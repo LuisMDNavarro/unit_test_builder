@@ -251,7 +251,7 @@ Resources:
                 Action:
                   - bedrock:InvokeAgent
                   - bedrock:InvokeModel
-                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock-agentcore:InvokeAgentRuntime
                 Resource: "*"
         - PolicyName: Lambda-ExecuteAPI-Policy
           PolicyDocument:
