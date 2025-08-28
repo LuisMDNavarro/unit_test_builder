@@ -134,8 +134,8 @@ Resources:
                           - What inputs and outputs are you expecting
                           - What errors or exceptions are you handling
                   5. Output format:
-                      - **Documentation:** Clear and professional, in {{language}}.
-                      - **Unit Tests:** Clean, organized, and following Python {{framework}} conventions.
+                      - **Documentation:** Clear and professional, in the requested language.
+                      - **Unit Tests:** Clean, organized, and following the conventions of the requested Python framework.
                       - Combine the documented code and the unit tests in a single Python file
                       - Documentation should be inside the code using comments and docstrings
                   6. Do not reveal internal reasoning. Only provide the final result.
@@ -162,7 +162,8 @@ Resources:
             BasePromptTemplate: |
                     {
                       "anthropic_version": "bedrock-2023-05-31",
-                      "system": "$instruction$",
+                      "system": "$instruction$
+                                              $prompt_session_attributes$",
                       "messages": [
                             {
                                 "role" : "user",
