@@ -1,5 +1,6 @@
 [theme]
-primaryColor = "#00C853"   # Color principal
-backgroundColor = "#121212"  # Color de fondo del body
-secondaryBackgroundColor = "#1F1F1F"  # Color del fondo del sidebar
-textColor = "#FFFFFF"  # Color del texto
+#Client's color palette
+primaryColor = "#00C853"
+backgroundColor = "#121212"
+secondaryBackgroundColor = "#1F1F1F"
+textColor = "#FFFFFF"

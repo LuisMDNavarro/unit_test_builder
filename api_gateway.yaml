@@ -10,6 +10,7 @@ Parameters:
     Default: Luis
 
 Resources:
+#Lambda function that invokes the agent
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -28,6 +29,7 @@ Resources:
           AGENT_ID: !ImportValue unit-test-builder-bedrock-agent-id
           ALIAS_ID: !ImportValue unit-test-builder-bedrock-agent-alias-id
 
+#HTTP API Gateway to expose the Lambda
   APIGateway:
     Type: AWS::ApiGatewayV2::Api
     Properties:
@@ -36,6 +38,7 @@ Resources:
       Name: Unit Test Builder API
       ProtocolType: HTTP
 
+#Integration between API Gateway and Lambda
   Integration:
     Type: AWS::ApiGatewayV2::Integration
     Properties:
@@ -44,6 +47,7 @@ Resources:
       IntegrationUri: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunction}
       PayloadFormatVersion: "2.0"
 
+#Route in API Gateway that invokes the Lambda
   Route:
     Type: AWS::ApiGatewayV2::Route
     Properties:
@@ -51,6 +55,7 @@ Resources:
       RouteKey: POST /generate-test
       Target: !Sub integrations/${Integration}
 
+#Permission for API Gateway to invoke Lambda
   Permission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -59,6 +64,7 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/$default/POST/generate-test
 
+#Deploying the API Gateway to the default stage
   ApiDeployment:
     Type: AWS::ApiGatewayV2::Stage
     Properties:
@@ -69,6 +75,7 @@ Resources:
       AutoDeploy: true
 
 Outputs:
+#Resource identifiers
   ApiEndpoint:
     Description: HTTP API Gateway URL
     Value: !GetAtt APIGateway.ApiEndpoint

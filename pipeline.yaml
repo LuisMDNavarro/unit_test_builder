@@ -15,6 +15,7 @@ Parameters:
     Description: Prefix for the resources names
     Default: unit-test-builder
 
+  #This parameter is required in the stack creation command.
   GitHubConnection:
     Type: String
     Description: ARN of CodePipeline Connection with Github
@@ -30,6 +31,7 @@ Parameters:
     Default: LuisMDNavarro/unit_test_builder
 
 Resources:
+#Codebuild project for the build phase in the pipeline
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
@@ -52,12 +54,12 @@ Resources:
           - Value: !ImportValue devops-unit-test-builder-pipeline-artifacts-bucket
             Name: ARTIFACTS_BUCKET
             Type: PLAINTEXT
-
       Cache:
         Type: LOCAL
         Modes:
           - LOCAL_SOURCE_CACHE
 
+#Pipeline that prepares and deploys all resources
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -70,6 +72,7 @@ Resources:
         Location: !ImportValue devops-unit-test-builder-pipeline-artifacts-bucket
       RoleArn: !ImportValue devops-unit-test-builder-pipeline-role
       Stages:
+      #This phase retrieves the templates from Github
         - Name: Source
           Actions:
             - ActionTypeId:
@@ -88,6 +91,7 @@ Resources:
               Region: !Sub ${AWS::Region}
               RunOrder: 1
 
+      #This phase prepares the templates for deployment
         - Name: Build
           Actions:
             - ActionTypeId:
@@ -105,8 +109,10 @@ Resources:
                 - Name: BuildArtifact
               RunOrder: 1
 
+        #This phase deploys the resource stacks
         - Name: Deploy
           Actions:
+          #Bedrock resources are created first.
             - Name: DeployInfrastructureBedrock
               RoleArn: !ImportValue devops-unit-test-builder-pipeline-role
               ActionTypeId:
@@ -123,6 +129,7 @@ Resources:
                 - Name: BuildArtifact
               RunOrder: 1
 
+          #With the Bedrock agent ready, the API is deployed.
             - Name: DeployInfrastructureAPI
               RoleArn: !ImportValue devops-unit-test-builder-pipeline-role
               ActionTypeId:

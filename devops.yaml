@@ -15,8 +15,8 @@ Parameters:
     Default: unit-test-builder
 
 Resources:
-#Roles
-  #CodeBuild
+#Roles required for deployment and execution
+  #Role for CodeBuild
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
@@ -32,6 +32,7 @@ Resources:
               Service: codebuild.amazonaws.com
             Action: sts:AssumeRole
       Policies:
+      #Allows send logs to CloudWatch
         - PolicyName: CodeBuild-CloudWatch-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -42,6 +43,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: "*"
+        #Allows upload and download objects from S3
         - PolicyName: CodeBuild-S3-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -51,7 +53,7 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                 Resource: "*"
-  #CodePipeline
+  #Role for CodePipeline
   CodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
@@ -67,6 +69,7 @@ Resources:
               Service: codepipeline.amazonaws.com
             Action: sts:AssumeRole
       Policies:
+      #Allows pass roles to other services
         - PolicyName: CodePipeline-IAM-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -75,6 +78,7 @@ Resources:
                 Action:
                   - iam:PassRole
                 Resource: "*"
+      #Allows upload and download objects from S3
         - PolicyName: CodePipeline-S3-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -84,6 +88,7 @@ Resources:
                   - s3:PutObject
                   - s3:GetObject
                 Resource: "*"
+      #Allows perform the build phase
         - PolicyName: CodePipeline-CodeBuild-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -93,6 +98,7 @@ Resources:
                   - codebuild:StartBuild
                   - codebuild:BatchGetBuilds
                 Resource: "*"
+      #Allows use a connection to retrieve resources
         - PolicyName: CodePipeline-CodeStar-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -101,6 +107,7 @@ Resources:
                 Action:
                   - codestar-connections:UseConnection
                 Resource: "*"
+      #Allows manage resource stacks
         - PolicyName: CodePipeline-CloudFormation-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -113,7 +120,7 @@ Resources:
                   - cloudformation:DescribeStackEvents
                 Resource: "*"
 
-  #CloudFormation
+  #Role for CloudFormation
   CloudFormationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -129,6 +136,7 @@ Resources:
               Service: cloudformation.amazonaws.com
             Action: sts:AssumeRole
       Policies:
+      #Allows pass roles to other services
         - PolicyName: CloudFormation-IAM-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -137,6 +145,7 @@ Resources:
                 Action:
                   - iam:PassRole
                 Resource: "*"
+      #Allows sending logs to CloudWatch
         - PolicyName: CloudFormation-CloudWatch-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -148,6 +157,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: "*"
+      #Allows manage the agent, its alias and guardrail in Bedrock
         - PolicyName: CloudFormation-Bedrock-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -173,6 +183,7 @@ Resources:
                   - bedrock:ListAgentKnowledgeBases
                   - bedrock:ListAgentActionGroups
                 Resource: "*"
+      #Allows manage the API in APIGateway
         - PolicyName: CloudFormation-APIGateway-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -184,6 +195,7 @@ Resources:
                   - apigateway:DELETE
                   - apigateway:TagResource
                 Resource: "*"
+      #Allows manage the function in Lambda
         - PolicyName: CloudFormation-Lambda-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -199,6 +211,7 @@ Resources:
                   - lambda:UpdateFunctionCode
                   - lambda:UpdateFunctionConfiguration
                 Resource: "*"
+        #Allows retrieve the function from S3
         - PolicyName: CloudFormation-S3-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -208,7 +221,7 @@ Resources:
                   - s3:GetObject
                 Resource: "*"
 
-  #Lambda
+  #Role for Lambda
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -224,15 +237,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: Lambda-S3-Policy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                  - s3:GetObject
-                Resource: "*"
+      #Allows sending logs to CloudWatch
         - PolicyName: Lambda-CloudWatch-Policy
           PolicyDocument:
             Version: '2012-10-17'
@@ -243,6 +248,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: "*"
+      #Allows call the Bedrock Agent
         - PolicyName: Lambda-Bedrock-Policy
           PolicyDocument:
             Version: '2012-10-17'
@@ -253,7 +259,7 @@ Resources:
                   - bedrock:InvokeModel
                 Resource: "*"
 
-  #Bedrock
+  #Role for Bedrock
   BedrockRole:
     Type: AWS::IAM::Role
     Properties:
@@ -270,6 +276,7 @@ Resources:
               Service: bedrock.amazonaws.com
             Action: sts:AssumeRole
       Policies:
+      #Allows call the Bedrock Agent and apply the Guardrail
         - PolicyName: Bedrock-Bedrock-Policy
           PolicyDocument:
             Version: 2012-10-17
@@ -281,7 +288,7 @@ Resources:
                   - bedrock:ApplyGuardrail
                 Resource: "*"
 
-#Buckets
+#Bucket to store pipeline artifacts
   PipelineArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -291,6 +298,7 @@ Resources:
       BucketName: !Sub ${PrefixName}-pipeline-artifacts-bucket
 
 Outputs:
+#Resource identifiers
   CodeBuildRole:
     Value: !GetAtt CodeBuildRole.Arn
     Export:

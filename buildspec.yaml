@@ -2,8 +2,11 @@ version: 0.2
 phases:
   build:
     commands:
+    #Package the template, upload the lambda function to the artifacts bucket, and generate a new template that points to the code in S3.
       - aws cloudformation package --template-file api_gateway.yaml --s3-bucket $ARTIFACTS_BUCKET --output-template-file api_gateway_packaged.yaml
 artifacts:
   files:
+  #This is the generated template ready for deployment
     - api_gateway_packaged.yaml
+  #The bedrock template is not affected but moves on to the next phase.
     - bedrock.yaml

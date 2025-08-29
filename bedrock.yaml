@@ -20,6 +20,7 @@ Parameters:
     Default: anthropic.claude-3-5-sonnet-20240620-v1:0
 
 Resources:
+#Guardrail for the agent
   Guardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
@@ -28,8 +29,11 @@ Resources:
           Value: !Ref Developer
       Name: !Sub ${PrefixName}-Guardrail
       Description: Filters and rules for the unit test builder agent
+      #Message when the input is blocked by the guardrail
       BlockedInputMessaging: Your request is not allowed.
+      #Message when the generated output is blocked
       BlockedOutputsMessaging: The generated content was blocked for security reasons.
+      #Content blocked in inputs and outputs
       ContentPolicyConfig:
         FiltersConfig:
           - Type: SEXUAL
@@ -50,7 +54,7 @@ Resources:
           - Type: PROMPT_ATTACK
             InputStrength: HIGH
             OutputStrength: NONE
-
+      #Sensitive information that the agent should not have
       SensitiveInformationPolicyConfig:
         PiiEntitiesConfig:
           - Type: PASSWORD
@@ -69,7 +73,7 @@ Resources:
             Action: BLOCK
           - Type: EMAIL
             Action: ANONYMIZE
-
+      #Topics unrelated to the agent's purpose
       TopicPolicyConfig:
         TopicsConfig:
           - Name: Not programming
@@ -79,7 +83,7 @@ Resources:
             Definition: Another programming language other than Python
             Type: DENY
 
-
+#Agent used in the API
   Agent:
     Type: AWS::Bedrock::Agent
     Properties:
@@ -88,10 +92,13 @@ Resources:
       AgentName: !Sub ${PrefixName}-Agent
       AutoPrepare: true
       AgentResourceRoleArn: !ImportValue devops-unit-test-builder-bedrock-role
+      #Model used by the agent
       FoundationModel: !Ref ModelID
+      #Guardrail that the agent will use
       GuardrailConfiguration:
         GuardrailIdentifier: !Ref Guardrail
         GuardrailVersion: DRAFT
+      #Main instructions to guide the agent's behavior (base prompt)
       Instruction: |
                   [ROLE]
                   You are an AI assistant specialized in Python code documentation and unit testing.
@@ -150,15 +157,23 @@ Resources:
 
                   **Unit Tests:**
                   <Generated Python unit tests code here and its documentation>
+      #Configuration to override the agent's default prompt
       PromptOverrideConfiguration:
         PromptConfigurations:
           - InferenceConfiguration:
+              #Maximum token limit in response
               MaximumLength: 1000
+              #Controls randomness: lower value = more deterministic responses
               Temperature: 0.2
+              #Maximum number of candidates to consider at each step
               TopK: 50
+              #Cumulative probability for sampling
               TopP: 0.9
+            #The original prompt is overwritten
             PromptCreationMode: OVERRIDDEN
+            #Stage where the prompt is used
             PromptType: ORCHESTRATION
+            #Defines the message structure for the model and allows the use of prompt_session_attributes
             BasePromptTemplate: |
                     {
                       "anthropic_version": "bedrock-2023-05-31",
@@ -182,7 +197,7 @@ Resources:
                         ]
                     }
 
-
+#Define an Alias ​​for the Agent
   Alias:
     Type: AWS::Bedrock::AgentAlias
     Properties:
@@ -193,6 +208,7 @@ Resources:
 
 
 Outputs:
+#Resource identifiers
   BedrockAgentId:
     Value: !Ref Agent
     Export:
